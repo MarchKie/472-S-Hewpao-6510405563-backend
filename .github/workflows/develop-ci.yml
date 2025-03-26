@@ -1,0 +1,44 @@
+name: "Develop CI"
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: ["develop"]
+  push:
+    branches: ["develop"]
+permissions:
+  contents: read
+env:
+  GO_VERSION: 1.23
+  APP_NAME: "hewpao-s-backend"
+jobs:
+  pre-test:
+    name: "Pre-Test"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Setup Go"
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: "Run Tests"
+        run: go test -v -cover ./usecase/
+
+  build:
+    name: "Build Dockerfile"
+    runs-on: "ubuntu-latest"
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+
+      - name: "Build"
+        run: |-
+          IMAGE_TAG="${GITHUB_REF#refs/*/}"
+          IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/${{ env.APP_NAME }}:${IMAGE_TAG}"
+
+          docker build -f docker/prod.Dockerfile -t "${IMAGE_NAME}" .
